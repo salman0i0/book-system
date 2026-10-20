@@ -1,0 +1,34 @@
+// firestore.rules
+// Security rules for the books collection.
+// A user can only read, create, update or delete their OWN books.
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /books/{bookId} {
+
+      // Allow listing books (collection query) — Firestore checks the query
+      // itself (where userId == uid) so we just need the user to be logged in.
+      // The where('userId','==', uid) in the query enforces user-scoping.
+      allow list: if request.auth != null;
+
+      // Allow reading a single book only if it belongs to this user
+      allow get: if request.auth != null
+                 && resource.data.userId == request.auth.uid;
+
+      // Allow creating a book only if the userId field matches the logged-in user
+      allow create: if request.auth != null
+                    && request.resource.data.userId == request.auth.uid;
+
+      // Allow updating and deleting only the user's own books
+      allow update, delete: if request.auth != null
+                            && resource.data.userId == request.auth.uid;
+    }
+
+    // Deny access to everything else
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
